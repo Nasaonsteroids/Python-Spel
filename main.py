@@ -32,6 +32,7 @@ class Player:
         self.y = HEIGHT // 2
 
     def move(self, keys):
+        # Rörelselogik för spelaren
         if keys[pygame.K_w] and self.y - PLAYER_SPEED > 0:
             self.y -= PLAYER_SPEED
         if keys[pygame.K_s] and self.y + PLAYER_SIZE + PLAYER_SPEED < HEIGHT:
@@ -44,7 +45,8 @@ class Player:
 
 class Enemy:
     def __init__(self):
-        self.sprites = [pygame.transform.scale(pygame.image.load(f"animation/go_{i}.png"), (ENEMY_SIZE, ENEMY_SIZE)) for i in range(1, 4)]
+        # Laddar fiendens bilder och initialiserar position
+        self.sprites = [pygame.transform.scale(pygame.image.load(f"go_{i}.png"), (ENEMY_SIZE, ENEMY_SIZE)) for i in range(1, 4)]
         self.current_sprite = 0
         self.image = self.sprites[self.current_sprite]
         self.x = random.randint(0, WIDTH - ENEMY_SIZE)
@@ -52,12 +54,14 @@ class Enemy:
         self.speed_multiplier = 1
 
     def animate(self):
-        self.current_sprite += 0.1  # Adjust the speed of animation
+        # Laddar fiendens bilder och initialiserar position
+        self.current_sprite += 0.1  #Justerar animationshastigheten
         if self.current_sprite >= len(self.sprites):
             self.current_sprite = 0
         self.image = self.sprites[int(self.current_sprite)]
 
     def move_towards_player(self, player_x, player_y):
+        # Rörelselogik mot spelaren
         dx = player_x - self.x
         dy = player_y - self.y
         distance = math.hypot(dx, dy)
@@ -66,16 +70,33 @@ class Enemy:
             dy = dy / distance
         self.x += dx * ENEMY_SPEED * self.speed_multiplier
         self.y += dy * ENEMY_SPEED * self.speed_multiplier
+    
+    def adjust_for_collision(self, all_enemies):
+        # Kollisionsjustering för fiender
+        for enemy in all_enemies:
+            if enemy != self:
+                distance = math.hypot(self.x - enemy.x, self.y - enemy.y)
+                if distance < ENEMY_SIZE:  #Om för nära, justera position
+                    overlap = ENEMY_SIZE - distance
+                    dx = (self.x - enemy.x) / distance * overlap
+                    dy = (self.y - enemy.y) / distance * overlap
+                    self.x += dx * 0.5
+                    self.y += dy * 0.5
+                    enemy.x -= dx * 0.5
+                    enemy.y -= dy * 0.5
+
 
 class Perk:
     def __init__(self):
-        self.image = pygame.image.load("images/freeze.png")
+        # Initialiserar power-up
+        self.image = pygame.image.load("freeze.png")
         self.image = pygame.transform.scale(self.image, (PERK_SIZE, PERK_SIZE))
         self.active = False
         self.start_time = None
         self.spawn_time = random.randint(5000, 6000)
 
     def spawn(self):
+        # Logik för att spawn power-up
         current_time = pygame.time.get_ticks()
         if not self.active and current_time >= self.spawn_time:
             self.x = random.randint(0, WIDTH - PERK_SIZE)
@@ -85,6 +106,7 @@ class Perk:
             self.spawn_time = current_time + random.randint(5000, 6000)
 
     def pickup(self, player_x, player_y):
+        # Logik för att plocka upp power-up
         if self.active and math.hypot(player_x - self.x, player_y - self.y) < PLAYER_SIZE / 2 + PERK_SIZE / 2:
             self.active = False
             self.start_time = pygame.time.get_ticks()
@@ -110,7 +132,7 @@ class Bullet:
         self.x += self.direction[0] * 10  # ändra hastiget på skotten
         self.y += self.direction[1] * 10  # ändra hasigheten på skotten
 
-background = pygame.image.load("images/backgroundriver.png")
+background = pygame.image.load("backgroundriver.png")
 
 # Spel Objekt
 player = Player()
@@ -163,11 +185,16 @@ while running:
             enemy.move_towards_player(player.x, player.y)
 
         current_time = pygame.time.get_ticks()
-        if keys[pygame.K_SPACE] and current_time - last_bullet_fired_time >= 100:  # 500 milliseconds
-            if len(bullets) < 1000000:  # Max antal skott på skärmen
-                bullet = Bullet(player.x, player.y, (0, -1))  # Ändra riktningen
+        mouse_x, mouse_y = pygame.mouse.get_pos()  # Hämta den aktuella muspositionen
+        if keys[pygame.K_SPACE] and current_time - last_bullet_fired_time >= 100:  # Kontrollera om du trycker på mellanslagstangenten
+            dx, dy = mouse_x - player.x, mouse_y - player.y  # Beräkna riktningsvektor
+            distance = math.hypot(dx, dy)
+            if distance != 0:  # Förhindra division med noll
+                dx, dy = dx / distance, dy / distance  # Normalisera riktningsvektorn
+            if len(bullets) < 1000000:  # Kontrollera det maximala antalet kulor
+                bullet = Bullet(player.x + PLAYER_SIZE / 2 - BULLET_SIZE / 2, player.y + PLAYER_SIZE / 2 - BULLET_SIZE / 2, (dx, dy))
                 bullets.append(bullet)
-                last_bullet_fired_time = current_time  # Uppdaterar senast skjutet tid
+                last_bullet_fired_time = current_time  # Uppdatera tiden då en kula senast avfyrades
 
         # Kollar för bullet-enemy kollision och döda fiender
         bullets_to_remove = []
@@ -175,7 +202,7 @@ while running:
             bullet.move()
             for enemy in enemies:
                 if math.hypot(bullet.x - enemy.x, bullet.y - enemy.y) < BULLET_SIZE / 2 + ENEMY_SIZE / 2:
-                # Collision detected, remove enemy and bullet
+                # Kollision upptäckt, ta bort fiende och kula
                     enemies.remove(enemy)
                     bullets_to_remove.append(bullet)
                     score += 5  
@@ -184,7 +211,7 @@ while running:
             bullets.remove(bullet)
 
         if len(enemies) == 0:  # Alla fiender är döda
-            # Spawn nya fiender
+            # Spawna nya fiender
             spawn_enemy_count += 2  # Öka mängden fiender med 2 per runda
             enemies = [Enemy() for _ in range(spawn_enemy_count)]
 
