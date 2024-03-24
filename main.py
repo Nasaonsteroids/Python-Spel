@@ -45,31 +45,63 @@ class Player:
 
 class Enemy:
     def __init__(self):
-        # Laddar fiendens bilder och initialiserar position
-        self.sprites = [pygame.transform.scale(pygame.image.load(f"go_{i}.png"), (ENEMY_SIZE, ENEMY_SIZE)) for i in range(1, 4)]
-        self.current_sprite = 0
-        self.image = self.sprites[self.current_sprite]
+        self.is_active = False  #Ställ in på True när fienden dyker upp och blir aktiv.
+        self.sprites = {
+            'go': [pygame.transform.scale(pygame.image.load(f"go_{i}.png"), (ENEMY_SIZE, ENEMY_SIZE)) for i in range(1, 4)],
+            'hit': [pygame.transform.scale(pygame.image.load(f"hit_{i}.png"), (ENEMY_SIZE, ENEMY_SIZE)) for i in range(1, 3)],
+            'die': [pygame.transform.scale(pygame.image.load(f"die_{i}.png"), (ENEMY_SIZE, ENEMY_SIZE)) for i in range(1, 4)],
+            'appear': [pygame.transform.scale(pygame.image.load(f"appear_{i}.png"), (ENEMY_SIZE, ENEMY_SIZE)) for i in range(1, 3)]
+        }
+        self.current_sprites = self.sprites['appear']
+        self.current_sprite_index = 0
+        self.image = self.current_sprites[self.current_sprite_index]
         self.x = random.randint(0, WIDTH - ENEMY_SIZE)
         self.y = random.randint(0, HEIGHT - ENEMY_SIZE)
-        self.speed_multiplier = 1
+        self.speed_multiplier = 0  # Börja stilla tills helt visas
+        self.state = 'appear'  # Initialtillstånd
 
     def animate(self):
-        # Laddar fiendens bilder och initialiserar position
-        self.current_sprite += 0.1  #Justerar animationshastigheten
-        if self.current_sprite >= len(self.sprites):
-            self.current_sprite = 0
-        self.image = self.sprites[int(self.current_sprite)]
+        self.current_sprite_index += 0.1
+        if self.current_sprite_index >= len(self.current_sprites):
+            self.current_sprite_index = 0
+            if self.state == 'appear':
+                self.speed_multiplier = 1  #Börja röra på dig
+                self.update_animation_state('go')
+            elif self.state == 'die':
+                self.remove()  # Ta bort fienden när tärningsanimeringen är klar
+
+        self.image = self.current_sprites[int(self.current_sprite_index)]
+
+    def update_animation_state(self, state):
+        self.state = state
+        self.current_sprites = self.sprites[state]
+        self.current_sprite_index = 0
+        if state == 'appear':
+            self.speed_multiplier = 0  # Sluta röra på sig tills helt visas
+        elif state == 'go':
+            self.speed_multiplier = 1  #Rör dig normalt
+        elif state == 'die':
+            self.speed_multiplier = 0  # Sluta röra på dig när du dör
+    def remove(self):
+        global enemies  #Använd en global fiendelista
+        enemies.remove(self)  # Ta bort mig själv från fiendelistan
+
 
     def move_towards_player(self, player_x, player_y):
-        # Rörelselogik mot spelaren
-        dx = player_x - self.x
-        dy = player_y - self.y
-        distance = math.hypot(dx, dy)
-        if distance != 0:
-            dx = dx / distance
-            dy = dy / distance
-        self.x += dx * ENEMY_SPEED * self.speed_multiplier
-        self.y += dy * ENEMY_SPEED * self.speed_multiplier
+    # Flytta bara om fienden är i "gå" tillstånd.
+        if self.state == 'go':
+            dx = player_x - self.x
+            dy = player_y - self.y
+            distance = math.hypot(dx, dy)
+            if distance != 0:  # Förhindra division med noll
+                dx = dx / distance
+                dy = dy / distance
+            self.x += dx * ENEMY_SPEED * self.speed_multiplier
+            self.y += dy * ENEMY_SPEED * self.speed_multiplier
+
+
+    def hit(self):
+        self.update_animation_state('die')
     
     def adjust_for_collision(self, all_enemies):
         # Kollisionsjustering för fiender
@@ -196,19 +228,23 @@ while running:
                 bullets.append(bullet)
                 last_bullet_fired_time = current_time  # Uppdatera tiden då en kula senast avfyrades
 
-        # Kollar för bullet-enemy kollision och döda fiender
+   
+        # Initiera bullets_to_remove innan din spelloop
         bullets_to_remove = []
+         # Kollar för bullet-enemy kollision och döda fiender
+        # Inuti din spelloop, för varje kula
         for bullet in bullets:
-            bullet.move()
+            bullet.move()  # Flytta kulan
             for enemy in enemies:
                 if math.hypot(bullet.x - enemy.x, bullet.y - enemy.y) < BULLET_SIZE / 2 + ENEMY_SIZE / 2:
-                # Kollision upptäckt, ta bort fiende och kula
-                    enemies.remove(enemy)
-                    bullets_to_remove.append(bullet)
-                    score += 5  
+                    enemies.remove(enemy)  # Ta bort fienden direkt
+                    bullets_to_remove.append(bullet)  # Markera kulan för borttagning
+                    score += 5
+                    break  #Viktigt att förhindra att denna kula kontrolleras mot andra fiender
 
-        for bullet in bullets_to_remove:
-            bullets.remove(bullet)
+        # Efter att ha kontrollerat alla kulor, ta bort de som är markerade för borttagning
+        bullets = [bullet for bullet in bullets if bullet not in bullets_to_remove]
+
 
         if len(enemies) == 0:  # Alla fiender är döda
             # Spawna nya fiender
