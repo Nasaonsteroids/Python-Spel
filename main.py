@@ -30,6 +30,7 @@ class Player:
         self.image.fill(WHITE)
         self.x = WIDTH // 2
         self.y = HEIGHT // 2
+        self.lives = 3
 
     def move(self, keys):
         # Rörelselogik för spelaren
@@ -82,6 +83,17 @@ class Enemy:
             self.speed_multiplier = 1  #Rör dig normalt
         elif state == 'die':
             self.speed_multiplier = 0  # Sluta röra på dig när du dör
+
+    def hit(self):
+        if self.state != 'hit': # Se till att vi bara utlöser detta en gång per kollision
+            self.update_animation_state('hit')
+            self.state = 'attack' # Ändra tillstånd till attack för att stoppa rörelsen
+    def update(self):
+        # Kallar den här metoden varje bildruta för att uppdatera zombies beteende
+        if self.state == 'attack' and self.current_sprite_index == len(self.current_sprites) - 1:
+           # Efter att ha avslutat attackanimeringen, håll dig stilla eller återgå till en annan animation
+            self.state = 'go'
+            self.update_animation_state('go') # Återställ till go-tillstånd eller något annat önskat tillstånd
     def remove(self):
         global enemies  #Använd en global fiendelista
         enemies.remove(self)  # Ta bort mig själv från fiendelistan
@@ -214,6 +226,7 @@ while running:
         perk.duration()
 
         for enemy in enemies:
+            enemy.update()
             enemy.move_towards_player(player.x, player.y)
 
         current_time = pygame.time.get_ticks()
@@ -252,9 +265,13 @@ while running:
             enemies = [Enemy() for _ in range(spawn_enemy_count)]
 
         if any(math.hypot(player.x - enemy.x, player.y - enemy.y) < PLAYER_SIZE / 2 + ENEMY_SIZE / 2 for enemy in enemies):
-            end_time = pygame.time.get_ticks()
-            elapsed_time = (end_time - start_time) / 1000.0
-            game_over = True
+            enemy.hit()
+            player.lives -= 1
+            enemies = [Enemy()for _ in range (spawn_enemy_count)] #Reset fiender eller hantera som önskat
+            if player.lives == 0:
+                end_time = pygame.time.get_ticks()
+                elapsed_time = (end_time - start_time) / 1000.0
+                game_over = True
 
     # Ritar  bakgrunden, spelaren, fienden, power-ups och skott
     screen.blit(background, (0, 0))
@@ -278,6 +295,11 @@ while running:
     score_rect = score_text.get_rect(topright=(WIDTH - 30, 30))
     screen.blit(score_text, score_rect)
 
+    #Liv
+    lives_text = font.render(f"Lives: {player.lives}", True, (255,255,255))
+    lives_rect = lives_text.get_rect(topleft=(30,30))
+    screen.blit(lives_text, lives_rect)
+
     # Hanterar game over och replay logik
     if game_over:
         game_over_screen(elapsed_time)
@@ -288,6 +310,7 @@ while running:
                 if event.key == pygame.K_r:
                     # Start om spelet för att köra igen
                     player = Player()
+                    player.lives = 3
                     spawn_enemy_count = 3
                     enemies = [Enemy() for _ in range(spawn_enemy_count)]
                     perk = Perk()
