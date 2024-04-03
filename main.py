@@ -4,18 +4,19 @@ import math
 
 pygame.init()
 
-WIDTH, HEIGHT = 1800, 1000
+WIDTH, HEIGHT = 1920, 1080
 PLAYER_SIZE = 40
 ENEMY_SIZE = 60
 PERK_SIZE = 40
-PLAYER_SPEED = 6
-ENEMY_SPEED = 2
+PLAYER_SPEED = 4
+ENEMY_SPEED = 1.5
 BULLET_SIZE = 5
 
 # Färger
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
+BROWNISHYELLOW = (155, 122, 1)
 
 # Spel fönster
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -31,6 +32,7 @@ class Player:
         self.x = WIDTH // 2
         self.y = HEIGHT // 2
         self.lives = 3
+        self.ammo = 12
 
     def move(self, keys):
         # Rörelselogik för spelaren
@@ -116,18 +118,17 @@ class Enemy:
         self.update_animation_state('die')
     
     def adjust_for_collision(self, all_enemies):
-        # Kollisionsjustering för fiender
-        for enemy in all_enemies:
-            if enemy != self:
-                distance = math.hypot(self.x - enemy.x, self.y - enemy.y)
-                if distance < ENEMY_SIZE:  #Om för nära, justera position
-                    overlap = ENEMY_SIZE - distance
-                    dx = (self.x - enemy.x) / distance * overlap
-                    dy = (self.y - enemy.y) / distance * overlap
-                    self.x += dx * 0.5
-                    self.y += dy * 0.5
-                    enemy.x -= dx * 0.5
-                    enemy.y -= dy * 0.5
+        for other in all_enemies:
+            if other != self:
+                dx, dy = self.x - other.x, self.y - other.y
+                distance = math.hypot(dx, dy)
+                if distance < ENEMY_SIZE:  # Adjust this threshold as needed
+                    # Calculate the overlap and push enemies apart
+                    overlap = 0.5 * (distance - ENEMY_SIZE)
+                    self.x -= overlap * (dx / distance)
+                    self.y -= overlap * (dy / distance)
+                    other.x += overlap * (dx / distance)
+                    other.y += overlap * (dy / distance)
 
 
 class Perk:
@@ -176,13 +177,27 @@ class Bullet:
         self.x += self.direction[0] * 10  # ändra hastiget på skotten
         self.y += self.direction[1] * 10  # ändra hasigheten på skotten
 
-background = pygame.image.load("backgroundriver.png")
+class AmmoPickup:
+    def __init__(self):
+        self.image = pygame.image.load("ammo.png")
+        self.image = pygame.transform.scale(self.image, (PERK_SIZE, PERK_SIZE))
+        self.x = random.randint(0, WIDTH - PERK_SIZE)
+        self.y = random.randint(0, HEIGHT - PERK_SIZE)
+        self.active = True  # Sätter True for att spawna
+
+    def picked_up(self, player):
+        if self.active and math.hypot(player.x - self.x, player.y - self.y) < PLAYER_SIZE / 2 + PERK_SIZE / 2:
+            self.active = False
+            player.ammo = min(12,player.ammo + 6) #Ger 6, max 12
+        pass
+background = pygame.image.load("dalle.jpg")
 
 # Spel Objekt
 player = Player()
 enemies = [Enemy() for _ in range(3)]
 perk = Perk()
 bullets = []
+ammo_pickup = AmmoPickup()
 
 # Variabel för att se senaste skottets avlossnings tid
 last_bullet_fired_time = 0
@@ -228,19 +243,26 @@ while running:
         for enemy in enemies:
             enemy.update()
             enemy.move_towards_player(player.x, player.y)
+            enemy.adjust_for_collision(enemies)
 
         current_time = pygame.time.get_ticks()
         mouse_x, mouse_y = pygame.mouse.get_pos()  # Hämta den aktuella muspositionen
-        if keys[pygame.K_SPACE] and current_time - last_bullet_fired_time >= 100:  # Kontrollera om du trycker på mellanslagstangenten
+        if keys[pygame.K_SPACE] and current_time - last_bullet_fired_time >= 100 and player.ammo > 0:  # Kontrollera om du trycker på mellanslagstangenten
+            player.ammo -= 1
             dx, dy = mouse_x - player.x, mouse_y - player.y  # Beräkna riktningsvektor
             distance = math.hypot(dx, dy)
             if distance != 0:  # Förhindra division med noll
                 dx, dy = dx / distance, dy / distance  # Normalisera riktningsvektorn
-            if len(bullets) < 1000000:  # Kontrollera det maximala antalet kulor
-                bullet = Bullet(player.x + PLAYER_SIZE / 2 - BULLET_SIZE / 2, player.y + PLAYER_SIZE / 2 - BULLET_SIZE / 2, (dx, dy))
-                bullets.append(bullet)
-                last_bullet_fired_time = current_time  # Uppdatera tiden då en kula senast avfyrades
+            bullet = Bullet(player.x + PLAYER_SIZE / 2 - BULLET_SIZE / 2, player.y + PLAYER_SIZE / 2 - BULLET_SIZE / 2, (dx, dy))
+            bullets.append(bullet)
+            last_bullet_fired_time = current_time  # Uppdatera tiden då en kula senast avfyrades
 
+        if ammo_pickup.active:
+            screen.blit(ammo_pickup.image, (ammo_pickup.x, ammo_pickup.y))
+            ammo_pickup.picked_up(player)
+        
+        if not ammo_pickup.active:
+            ammo_pickup = AmmoPickup()
    
         # Initiera bullets_to_remove innan din spelloop
         bullets_to_remove = []
@@ -286,6 +308,7 @@ while running:
         screen.blit(perk.image, (perk.x, perk.y))
 
     for bullet in bullets:
+        bullet.move()
         screen.blit(bullet.image, (bullet.x, bullet.y))
 
     #Poäng
