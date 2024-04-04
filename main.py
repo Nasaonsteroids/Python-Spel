@@ -7,7 +7,7 @@ pygame.init()
 WIDTH, HEIGHT = 1920, 1080
 PLAYER_SIZE = 40
 ENEMY_SIZE = 60
-PERK_SIZE = 40
+PERK_SIZE = 45
 PLAYER_SPEED = 4
 ENEMY_SPEED = 1.5
 BULLET_SIZE = 5
@@ -19,7 +19,7 @@ BLUE = (0, 0, 255)
 BROWNISHYELLOW = (155, 122, 1)
 
 # Spel fönster
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 pygame.display.set_caption("2D Game")
 
 # Font rendering
@@ -179,17 +179,28 @@ class Bullet:
 
 class AmmoPickup:
     def __init__(self):
-        self.image = pygame.image.load("ammo.png")
+        self.image = pygame.image.load("ammo.png").convert_alpha()
         self.image = pygame.transform.scale(self.image, (PERK_SIZE, PERK_SIZE))
         self.x = random.randint(0, WIDTH - PERK_SIZE)
         self.y = random.randint(0, HEIGHT - PERK_SIZE)
-        self.active = True  # Sätter True for att spawna
-
+        self.active = False
+        self.next_spawn_time = pygame.time.get_ticks() + 5000
+        
     def picked_up(self, player):
         if self.active and math.hypot(player.x - self.x, player.y - self.y) < PLAYER_SIZE / 2 + PERK_SIZE / 2:
             self.active = False
-            player.ammo = min(12,player.ammo + 6) #Ger 6, max 12
-        pass
+            self.next_spawn_time = pygame.time.get_ticks() + 5000
+            player.ammo = min(12, player.ammo + 6) #Ger 6, max 12
+
+    def respawn(self):
+        if not self.active and pygame.time.get_ticks() >= self.next_spawn_time:
+            self.x = random.randint(0, WIDTH - PERK_SIZE)
+            self.y = random.randint(0, HEIGHT - PERK_SIZE)
+            self.active = True
+            print(f"Respawning ammo at: {self.x}, {self.y}")  
+
+
+            
 background = pygame.image.load("dalle.jpg")
 
 # Spel Objekt
@@ -239,6 +250,9 @@ while running:
         perk.spawn()
         perk.pickup(player.x, player.y)
         perk.duration()
+        ammo_pickup.respawn()
+
+ 
 
         for enemy in enemies:
             enemy.update()
@@ -257,13 +271,7 @@ while running:
             bullets.append(bullet)
             last_bullet_fired_time = current_time  # Uppdatera tiden då en kula senast avfyrades
 
-        if ammo_pickup.active:
-            screen.blit(ammo_pickup.image, (ammo_pickup.x, ammo_pickup.y))
-            ammo_pickup.picked_up(player)
         
-        if not ammo_pickup.active:
-            ammo_pickup = AmmoPickup()
-   
         # Initiera bullets_to_remove innan din spelloop
         bullets_to_remove = []
          # Kollar för bullet-enemy kollision och döda fiender
@@ -307,6 +315,13 @@ while running:
     if perk.active:
         screen.blit(perk.image, (perk.x, perk.y))
 
+    if ammo_pickup.active:
+        screen.blit(ammo_pickup.image, (ammo_pickup.x, ammo_pickup.y))
+        print("Ammo Pickup is active and should be visible at", ammo_pickup.x, ammo_pickup.y)
+
+    ammo_pickup.picked_up(player)
+
+
     for bullet in bullets:
         bullet.move()
         screen.blit(bullet.image, (bullet.x, bullet.y))
@@ -322,6 +337,12 @@ while running:
     lives_text = font.render(f"Lives: {player.lives}", True, (255,255,255))
     lives_rect = lives_text.get_rect(topleft=(30,30))
     screen.blit(lives_text, lives_rect)
+
+    #Ammo
+    ammo_text = font.render(f"Ammo: {player.ammo}", True, WHITE)
+    ammo_rect = ammo_text.get_rect(topright=(WIDTH - 30, 60))
+    screen.blit(ammo_text, ammo_rect)
+
 
     # Hanterar game over och replay logik
     if game_over:
