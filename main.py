@@ -4,7 +4,7 @@ import math
 
 pygame.init()
 
-WIDTH, HEIGHT = 1920, 1080
+WIDTH, HEIGHT = 1000, 800
 PLAYER_SIZE = 40
 ENEMY_SIZE = 60
 PERK_SIZE = 45
@@ -66,6 +66,7 @@ class Enemy:
         self.head_hitbox = pygame.Rect(self.x, self.y, ENEMY_SIZE, ENEMY_SIZE * 0.25)
         self.body_hits_required = 2
         self.head_hits_required = 1
+        self.burning = False
 
     def animate(self):
         self.current_sprite_index += 0.1
@@ -93,13 +94,32 @@ class Enemy:
     def hit(self):
         if self.state != 'hit': # Se till att vi bara utlöser detta en gång per kollision
             self.update_animation_state('hit')
-            self.state = 'attack' # Ändra tillstånd till attack för att stoppa rörelsen
+            self.state = 'attack' # Ändra tillstånd till attack för att stoppa 
+    def start_burning(self):
+        self.burning = True
+        self.burn_start_time = pygame.time.get_ticks()
+
+    def draw(self, screen):
+        if self.burning:
+            #Lägg över en röd tint på enemy sprite
+            burning_effect = self.image.copy()
+            burning_effect.fill((255,0,0,128), special_flags=pygame.BLEND_RGB_ADD)
+            screen.blit(burning_effect,(self.x, self.y))
+        else:
+            screen.blit(self.image, (self.x, self.y))
+
     def update(self):
         # Kallar den här metoden varje bildruta för att uppdatera zombies beteende
         if self.state == 'attack' and self.current_sprite_index == len(self.current_sprites) - 1:
            # Efter att ha avslutat attackanimeringen, håll dig stilla eller återgå till en annan animation
             self.state = 'go'
             self.update_animation_state('go') # Återställ till go-tillstånd eller något annat önskat tillstånd
+        if self.burning:
+            if pygame.time.get_ticks() - self.burn_start_time >= 3000:
+                self.hit()
+                self.burning = False
+
+
     def remove(self):
         global enemies  #Använd en global fiendelista
         enemies.remove(self)  # Ta bort mig själv från fiendelistan
@@ -140,7 +160,7 @@ class Enemy:
                     other.y += overlap * (dy / distance)
 
 
-class Perk:
+class FreezePerk:
     def __init__(self):
         # Initialiserar power-up
         self.image = pygame.image.load("freeze.png")
@@ -174,6 +194,39 @@ class Perk:
             for enemy in enemies:
                 enemy.speed_multiplier = 1
 
+class FireBurnPerk:
+    def __init__(self) -> None:
+        self.image = pygame.image.load("fire_burn.png")
+        self.image = pygame.transform.scale(self.image,(PERK_SIZE, PERK_SIZE))
+        self.active = False
+        self.last_check_time = pygame.time.get_ticks()
+
+    def spawn(self):
+        if not self.active:  # Temporarily ignore the timing logic for testing
+            self.x = random.randint(0, WIDTH - PERK_SIZE)
+            self.y = random.randint(0, HEIGHT - PERK_SIZE)
+            self.active = True
+            print(f"FireBurnPerk spawned at ({self.x}, {self.y})")  # Debug print
+
+    # def spawn(self):
+    #     current_time = pygame.time.get_ticks()
+    #     print("Attempting to spawn FireBurnPerk...")
+    #     if not self.active and current_time - self.last_check_time >= 5000:  # 20 seconds
+    #         self.last_check_time = current_time
+    #         if random.random() < 0.95: #5% chans att spawna
+    #             self.x = random.randint(0, WIDTH - PERK_SIZE)
+    #             self.y = random.randint(0, HEIGHT - PERK_SIZE)
+    #             self.active = True
+    #             print(f"FireBurnPerk spawned at ({self.x}, {self.y})")  # Debug print
+
+
+    def pickup(self, player_x, player_y):
+        if self.active and math.hypot(player_x - self.x, player_y - self.y) < PLAYER_SIZE / 2 + PERK_SIZE / 2:
+            self.active = False
+            return True
+        return False
+
+
 class Bullet:
     def __init__(self, x, y, direction):
         self.image = pygame.Surface((BULLET_SIZE, BULLET_SIZE))
@@ -206,7 +259,7 @@ class AmmoPickup:
             self.x = random.randint(0, WIDTH - PERK_SIZE)
             self.y = random.randint(0, HEIGHT - PERK_SIZE)
             self.active = True
-            print(f"Respawning ammo at: {self.x}, {self.y}")  
+            # print(f"Respawning ammo at: {self.x}, {self.y}")  
 
 
             
@@ -215,9 +268,10 @@ background = pygame.image.load("dalle.jpg")
 # Spel Objekt
 player = Player()
 enemies = [Enemy() for _ in range(3)]
-perk = Perk()
+perk = FreezePerk()
 bullets = []
 ammo_pickup = AmmoPickup()
+fire_burn_perk = FireBurnPerk()
 
 # Variabel för att se senaste skottets avlossnings tid
 last_bullet_fired_time = 0
@@ -280,6 +334,13 @@ while running:
             bullets.append(bullet)
             last_bullet_fired_time = current_time  # Uppdatera tiden då en kula senast avfyrades
 
+
+        fire_burn_perk.spawn()  # Kontrollera om det är dags att skapa Fire Burn Perk
+        if fire_burn_perk.active:
+            screen.blit(fire_burn_perk.image, (fire_burn_perk.x, fire_burn_perk.y))
+            if fire_burn_perk.pickup(player.x, player.y):  # Kontrollera om spelaren hämtar förmånen
+                for enemy in enemies:  # Tillämpa bränneffekten på alla fiender
+                    enemy.start_burning()
         
         # Initiera bullets_to_remove innan din spelloop
         bullets_to_remove = []
@@ -320,6 +381,9 @@ while running:
                 elapsed_time = (end_time - start_time) / 1000.0
                 game_over = True
 
+
+
+
     # Ritar  bakgrunden, spelaren, fienden, power-ups och skott
     screen.blit(background, (0, 0))
     screen.blit(player.image, (player.x, player.y))
@@ -344,6 +408,8 @@ while running:
     for bullet in bullets:
         bullet.move()
         screen.blit(bullet.image, (bullet.x, bullet.y))
+
+    
 
     #Poäng
     font_size = 48
@@ -376,7 +442,7 @@ while running:
                     player.lives = 3
                     spawn_enemy_count = 3
                     enemies = [Enemy() for _ in range(spawn_enemy_count)]
-                    perk = Perk()
+                    perk = FreezePerk()
                     bullets = []  
                     score = 0  
                     start_time = pygame.time.get_ticks()
