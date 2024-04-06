@@ -2,5 +2,11 @@ fire burn, red animation indicator
 start menu, name putting
 score saving 
 fix bullet visuals
-zomibe hitbox fix
 Maybe add diff type of zombies
+
+
+
+-------
+fixed
+__________________
+zomibe hitbox fix

@@ -62,6 +62,10 @@ class Enemy:
         self.y = random.randint(0, HEIGHT - ENEMY_SIZE)
         self.speed_multiplier = 0  # Börja stilla tills helt visas
         self.state = 'appear'  # Initialtillstånd
+        self.body_hitbox = pygame.Rect(self.x, self.y, ENEMY_SIZE, ENEMY_SIZE * 0.75)
+        self.head_hitbox = pygame.Rect(self.x, self.y, ENEMY_SIZE, ENEMY_SIZE * 0.25)
+        self.body_hits_required = 2
+        self.head_hits_required = 1
 
     def animate(self):
         self.current_sprite_index += 0.1
@@ -113,6 +117,11 @@ class Enemy:
             self.x += dx * ENEMY_SPEED * self.speed_multiplier
             self.y += dy * ENEMY_SPEED * self.speed_multiplier
 
+        self.body_hitbox.x = self.x
+        self.body_hitbox.y = self. y + ENEMY_SIZE * 0.25 #Kroppens hitbox
+        self.head_hitbox.x = self.x
+        self.head_hitbox.y = self.y
+
 
     def hit(self):
         self.update_animation_state('die')
@@ -122,8 +131,8 @@ class Enemy:
             if other != self:
                 dx, dy = self.x - other.x, self.y - other.y
                 distance = math.hypot(dx, dy)
-                if distance < ENEMY_SIZE:  # Adjust this threshold as needed
-                    # Calculate the overlap and push enemies apart
+                if distance < ENEMY_SIZE:  # Justera denna9 efter behov
+                    # Beräkna överlappningen och tryck isär fiender
                     overlap = 0.5 * (distance - ENEMY_SIZE)
                     self.x -= overlap * (dx / distance)
                     self.y -= overlap * (dy / distance)
@@ -274,17 +283,25 @@ while running:
         
         # Initiera bullets_to_remove innan din spelloop
         bullets_to_remove = []
-         # Kollar för bullet-enemy kollision och döda fiender
+        # Kollar för bullet-enemy kollision och döda fiender
         # Inuti din spelloop, för varje kula
         for bullet in bullets:
             bullet.move()  # Flytta kulan
             for enemy in enemies:
-                if math.hypot(bullet.x - enemy.x, bullet.y - enemy.y) < BULLET_SIZE / 2 + ENEMY_SIZE / 2:
-                    enemies.remove(enemy)  # Ta bort fienden direkt
-                    bullets_to_remove.append(bullet)  # Markera kulan för borttagning
-                    score += 5
+                if enemy.head_hitbox.collidepoint((bullet.x, bullet.y)):
+                    enemy.head_hits_required-= 1
+                    bullets_to_remove.append(bullet)
+                    if enemy.head_hits_required <= 0:
+                        enemies.remove(enemy)
+                        score += 5
                     break  #Viktigt att förhindra att denna kula kontrolleras mot andra fiender
-
+                elif enemy.body_hitbox.collidepoint((bullet.x, bullet.y)):
+                    enemy.body_hits_required -= 1
+                    bullets_to_remove.append(bullet)
+                    if enemy.body_hits_required <= 0:
+                        enemies.remove(enemy)
+                        score += 5
+                    break
         # Efter att ha kontrollerat alla kulor, ta bort de som är markerade för borttagning
         bullets = [bullet for bullet in bullets if bullet not in bullets_to_remove]
 
@@ -311,6 +328,8 @@ while running:
         enemy.animate()
         enemy.move_towards_player(player.x, player.y)
         screen.blit(enemy.image, (enemy.x, enemy.y))
+        pygame.draw.rect(screen, (255, 0, 0), enemy.head_hitbox, 2)  # Hitbox check head 
+        pygame.draw.rect(screen, (0, 255, 0), enemy.body_hitbox, 2)  # Hitbox check body
 
     if perk.active:
         screen.blit(perk.image, (perk.x, perk.y))
