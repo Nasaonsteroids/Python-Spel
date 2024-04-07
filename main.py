@@ -21,9 +21,81 @@ BROWNISHYELLOW = (155, 122, 1)
 # Spel fönster
 screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 pygame.display.set_caption("2D Game")
+clock = pygame.time.Clock()
 
 # Font rendering
 font = pygame.font.Font(None, 36)
+# Start Menu Function
+def start_menu():
+    menu_font = pygame.font.Font(None, 72)
+    input_box = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 - 10, 200, 50)
+    color_inactive = pygame.Color('lightskyblue3')
+    color_active = pygame.Color('dodgerblue2')
+    color = color_inactive
+    active = False
+    text = ''
+    done = False
+    menu_options = ['PLAY', 'EXIT', 'SCORE']
+    selected_option = 0
+    menu_option_rects = []
+
+    for i, option in enumerate(menu_options):
+        option_text = menu_font.render(option, True, WHITE)
+        option_rect = option_text.get_rect(center=(WIDTH // 2, 150 + i * 100))
+        menu_option_rects.append(option_rect)
+
+    while not done:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return 'EXIT', ''
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    if active:
+                        done = True
+                    else:
+                        return menu_options[selected_option], text
+                elif event.key == pygame.K_UP:
+                    selected_option = (selected_option - 1) % len(menu_options)
+                elif event.key == pygame.K_DOWN:
+                    selected_option = (selected_option + 1) % len(menu_options)
+                if active:
+                    if event.key == pygame.K_BACKSPACE:
+                        text = text[:-1]
+                    else:
+                        text += event.unicode
+            if event.type == pygame.MOUSEBUTTONDOWN and not active:
+                mouse_pos = event.pos  # Gets the mouse position
+                for i, rect in enumerate(menu_option_rects):
+                    if rect.collidepoint(mouse_pos):
+                        selected_option = i
+                        return menu_options[selected_option], text
+
+        screen.fill((30, 30, 30))
+        for i, rect in enumerate(menu_option_rects):
+            color = (200, 200, 200) if i == selected_option else (100, 100, 100)
+            option_text = menu_font.render(menu_options[i], True, color)
+            screen.blit(option_text, rect.topleft)
+
+        # Input box for name
+        if active:
+            color = color_active
+        else:
+            color = color_inactive
+        pygame.draw.rect(screen, color, input_box, 2)
+        text_surface = menu_font.render(text, True, color)
+        screen.blit(text_surface, (input_box.x + 5, input_box.y + 5))
+        pygame.display.flip()
+        clock.tick(30)
+    
+    return menu_options[selected_option], text
+
+
+# Call to start_menu here (Before entering the main game loop)
+choice, player_name = start_menu()
+if choice == 'EXIT':
+    pygame.quit()
+    quit()
 
 class Player:
     def __init__(self):
@@ -283,13 +355,14 @@ def replay_or_exit_screen():
     screen.blit(replay_text, replay_rect)
     screen.blit(exit_text, exit_rect)
 
+
 # Main game loop
 running = True
 game_over = False
 spawn_enemy_count = 3  # Antalet fiender som spawnar först
 enemies = [Enemy() for _ in range(spawn_enemy_count)]  # Fiendernas spawn
 
-clock = pygame.time.Clock()
+
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
