@@ -4,7 +4,7 @@ import math
 
 pygame.init()
 
-WIDTH, HEIGHT = 1000, 800
+WIDTH, HEIGHT = 1920, 1080
 PLAYER_SIZE = 40
 ENEMY_SIZE = 60
 PERK_SIZE = 45
@@ -169,6 +169,7 @@ class FreezePerk:
         self.start_time = None
         self.spawn_time = random.randint(5000, 6000)
 
+
     def spawn(self):
         # Logik för att spawn power-up
         current_time = pygame.time.get_ticks()
@@ -200,25 +201,16 @@ class FireBurnPerk:
         self.image = pygame.transform.scale(self.image,(PERK_SIZE, PERK_SIZE))
         self.active = False
         self.last_check_time = pygame.time.get_ticks()
+        self.x = random.randint(0, WIDTH - PERK_SIZE)
+        self.y = random.randint(0, HEIGHT - PERK_SIZE)
 
     def spawn(self):
-        if not self.active:  # Temporarily ignore the timing logic for testing
+        current_time = pygame.time.get_ticks()
+        if not self.active and (current_time - self.last_check_time >= 100000): # 100 sekunder i millisekunder
             self.x = random.randint(0, WIDTH - PERK_SIZE)
             self.y = random.randint(0, HEIGHT - PERK_SIZE)
             self.active = True
-            print(f"FireBurnPerk spawned at ({self.x}, {self.y})")  # Debug print
-
-    # def spawn(self):
-    #     current_time = pygame.time.get_ticks()
-    #     print("Attempting to spawn FireBurnPerk...")
-    #     if not self.active and current_time - self.last_check_time >= 5000:  # 20 seconds
-    #         self.last_check_time = current_time
-    #         if random.random() < 0.95: #5% chans att spawna
-    #             self.x = random.randint(0, WIDTH - PERK_SIZE)
-    #             self.y = random.randint(0, HEIGHT - PERK_SIZE)
-    #             self.active = True
-    #             print(f"FireBurnPerk spawned at ({self.x}, {self.y})")  # Debug print
-
+            self.last_check_time = current_time  # Uppdatera den senaste kontrolltiden till aktuell
 
     def pickup(self, player_x, player_y):
         if self.active and math.hypot(player_x - self.x, player_y - self.y) < PLAYER_SIZE / 2 + PERK_SIZE / 2:
@@ -398,9 +390,11 @@ while running:
     if perk.active:
         screen.blit(perk.image, (perk.x, perk.y))
 
+    if fire_burn_perk.active:
+        screen.blit(fire_burn_perk.image,(fire_burn_perk.x, fire_burn_perk.y))
+
     if ammo_pickup.active:
         screen.blit(ammo_pickup.image, (ammo_pickup.x, ammo_pickup.y))
-        print("Ammo Pickup is active and should be visible at", ammo_pickup.x, ammo_pickup.y)
 
     ammo_pickup.picked_up(player)
 
