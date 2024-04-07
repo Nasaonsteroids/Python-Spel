@@ -98,15 +98,13 @@ class Enemy:
     def start_burning(self):
         self.burning = True
         self.burn_start_time = pygame.time.get_ticks()
-
-    def draw(self, screen):
+    
+    def render_burning_text(self, surface):
         if self.burning:
-            #Lägg över en röd tint på enemy sprite
-            burning_effect = self.image.copy()
-            burning_effect.fill((255,0,0,128), special_flags=pygame.BLEND_RGB_ADD)
-            screen.blit(burning_effect,(self.x, self.y))
-        else:
-            screen.blit(self.image, (self.x, self.y))
+            burning_text = font.render("Burning!", True, (255, 69, 0))  # Orange color for visibility
+            text_rect = burning_text.get_rect(center=(self.x + ENEMY_SIZE // 2, self.y - 20))
+            surface.blit(burning_text, text_rect)
+
 
     def update(self):
         # Kallar den här metoden varje bildruta för att uppdatera zombies beteende
@@ -115,9 +113,10 @@ class Enemy:
             self.state = 'go'
             self.update_animation_state('go') # Återställ till go-tillstånd eller något annat önskat tillstånd
         if self.burning:
-            if pygame.time.get_ticks() - self.burn_start_time >= 3000:
-                self.hit()
-                self.burning = False
+            pygame.time.get_ticks() - self.burn_start_time >= 3000:
+            self.hit()
+            self.burning = False
+              
 
 
     def remove(self):
@@ -206,7 +205,7 @@ class FireBurnPerk:
 
     def spawn(self):
         current_time = pygame.time.get_ticks()
-        if not self.active and (current_time - self.last_check_time >= 100000): # 100 sekunder i millisekunder
+        if not self.active and (current_time - self.last_check_time >= 100): # 100 sekunder i millisekunder
             self.x = random.randint(0, WIDTH - PERK_SIZE)
             self.y = random.randint(0, HEIGHT - PERK_SIZE)
             self.active = True
@@ -384,6 +383,7 @@ while running:
         enemy.animate()
         enemy.move_towards_player(player.x, player.y)
         screen.blit(enemy.image, (enemy.x, enemy.y))
+        enemy.render_burning_text(screen)
         pygame.draw.rect(screen, (255, 0, 0), enemy.head_hitbox, 2)  # Hitbox check head 
         pygame.draw.rect(screen, (0, 255, 0), enemy.body_hitbox, 2)  # Hitbox check body
 
