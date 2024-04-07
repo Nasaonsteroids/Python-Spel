@@ -1,5 +1,4 @@
-name putting
-score saving 
+fix fire damage points
 fix bullet visuals
 Maybe add diff type of zombies
 
@@ -11,3 +10,5 @@ __________________
 zomibe hitbox fix
 fire burn, text indicator
 Start menu
+score saving
+name putting

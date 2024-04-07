@@ -1,5 +1,6 @@
 import pygame
 import random
+import datetime
 import math
 
 pygame.init()
@@ -64,12 +65,23 @@ def start_menu():
                         text = text[:-1]
                     else:
                         text += event.unicode
-            if event.type == pygame.MOUSEBUTTONDOWN and not active:
-                mouse_pos = event.pos  # Gets the mouse position
-                for i, rect in enumerate(menu_option_rects):
-                    if rect.collidepoint(mouse_pos):
-                        selected_option = i
-                        return menu_options[selected_option], text
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if input_box.collidepoint(event.pos):
+                    # Toggle the active variable.
+                    active = not active
+                else:
+                    active = False
+                color = color_active if active else color_inactive
+                # If clicking on a menu option, not just the input box
+                if not active:
+                    mouse_pos = event.pos  # Gets the mouse position
+                    for i, rect in enumerate(menu_option_rects):
+                        if rect.collidepoint(mouse_pos):
+                            selected_option = i
+                            if menu_options[selected_option] == 'PLAY':
+                                done = True  # Assume selecting play also submits the name
+                            else:
+                                return menu_options[selected_option], text
 
         screen.fill((30, 30, 30))
         for i, rect in enumerate(menu_option_rects):
@@ -77,18 +89,14 @@ def start_menu():
             option_text = menu_font.render(menu_options[i], True, color)
             screen.blit(option_text, rect.topleft)
 
-        # Input box for name
-        if active:
-            color = color_active
-        else:
-            color = color_inactive
         pygame.draw.rect(screen, color, input_box, 2)
-        text_surface = menu_font.render(text, True, color)
+        text_surface = menu_font.render(text, True, WHITE)
         screen.blit(text_surface, (input_box.x + 5, input_box.y + 5))
         pygame.display.flip()
         clock.tick(30)
     
-    return menu_options[selected_option], text
+    return 'PLAY', text
+
 
 
 # Call to start_menu here (Before entering the main game loop)
@@ -96,6 +104,11 @@ choice, player_name = start_menu()
 if choice == 'EXIT':
     pygame.quit()
     quit()
+
+def save_score(score, player_name):
+    with open("scores.txt", "a") as file:
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        file.write(f"{timestamp} - {player_name}: {score}\n")
 
 class Player:
     def __init__(self):
@@ -116,6 +129,7 @@ class Player:
             self.x -= PLAYER_SPEED
         if keys[pygame.K_d] and self.x + PLAYER_SIZE + PLAYER_SPEED < WIDTH:
             self.x += PLAYER_SPEED
+
 
 
 class Enemy:
@@ -295,10 +309,23 @@ class Bullet:
         self.x = x
         self.y = y
         self.direction = direction
-
+        self.trail = [(x, y)]
     def move(self):
-        self.x += self.direction[0] * 10  # ändra hastiget på skotten
-        self.y += self.direction[1] * 10  # ändra hasigheten på skotten
+        new_x = self.x + self.direction[0] * 10 # ändra hastiget på skotten
+        new_y = self.y + self.direction[1] * 10  # ändra hasigheten på skotten
+         # Lägg till aktuell position till leden
+        self.trail.append((new_x, new_y))
+        # Håll leden en viss längd
+        if len(self.trail) > 5:
+            self.trail.pop(0)
+        self.x = new_x
+        self.y = new_y
+    def draw(self, screen):
+        # Rita kulspåret
+        if len(self.trail) > 1:
+            pygame.draw.lines(screen, BLUE, False, self.trail, 2)
+        # Ritar skottet
+        screen.blit(self.image, (self.x, self.y))
 
 class AmmoPickup:
     def __init__(self):
@@ -410,6 +437,7 @@ while running:
         # Inuti din spelloop, för varje kula
         for bullet in bullets:
             bullet.move()  # Flytta kulan
+            bullet.draw(screen)  
             for enemy in enemies:
                 if enemy.head_hitbox.collidepoint((bullet.x, bullet.y)):
                     enemy.head_hits_required-= 1
@@ -441,6 +469,7 @@ while running:
             if player.lives == 0:
                 end_time = pygame.time.get_ticks()
                 elapsed_time = (end_time - start_time) / 1000.0
+                save_score(score, player_name)
                 game_over = True
 
 
