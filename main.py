@@ -105,7 +105,6 @@ class Enemy:
             text_rect = burning_text.get_rect(center=(self.x + ENEMY_SIZE // 2, self.y - 20))
             surface.blit(burning_text, text_rect)
 
-
     def update(self):
         # Kallar den här metoden varje bildruta för att uppdatera zombies beteende
         if self.state == 'attack' and self.current_sprite_index == len(self.current_sprites) - 1:
@@ -113,10 +112,9 @@ class Enemy:
             self.state = 'go'
             self.update_animation_state('go') # Återställ till go-tillstånd eller något annat önskat tillstånd
         if self.burning:
-            pygame.time.get_ticks() - self.burn_start_time >= 3000:
-            self.hit()
-            self.burning = False
-              
+            if pygame.time.get_ticks() - self.burn_start_time >= 3000:
+                self.hit()
+                self.burning = False
 
 
     def remove(self):
