@@ -26,7 +26,7 @@ clock = pygame.time.Clock()
 
 # Font rendering
 font = pygame.font.Font(None, 36)
-# Start Menu Function
+# Start Menu Funktion
 def start_menu():
     menu_font = pygame.font.Font(None, 72)
     input_box = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 - 10, 200, 50)
@@ -67,19 +67,19 @@ def start_menu():
                         text += event.unicode
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if input_box.collidepoint(event.pos):
-                    # Toggle the active variable.
+                    # Växla den aktiva variabeln.
                     active = not active
                 else:
                     active = False
                 color = color_active if active else color_inactive
-                # If clicking on a menu option, not just the input box
+                # Om du klickar på ett menyalternativ, inte bara inmatningsrutan
                 if not active:
-                    mouse_pos = event.pos  # Gets the mouse position
+                    mouse_pos = event.pos  # Får muspositionen
                     for i, rect in enumerate(menu_option_rects):
                         if rect.collidepoint(mouse_pos):
                             selected_option = i
                             if menu_options[selected_option] == 'PLAY':
-                                done = True  # Assume selecting play also submits the name
+                                done = True  # Anta att valet av spel också skickar in namnet
                             else:
                                 return menu_options[selected_option], text
 
@@ -99,7 +99,7 @@ def start_menu():
 
 
 
-# Call to start_menu here (Before entering the main game loop)
+# Kallar till start_menu här (innan du går in i huvudspelslingan)
 choice, player_name = start_menu()
 if choice == 'EXIT':
     pygame.quit()
@@ -173,7 +173,7 @@ class Enemy:
         if state == 'appear':
             self.speed_multiplier = 0  # Sluta röra på sig tills helt visas
         elif state == 'go':
-            self.speed_multiplier = 1  #Rör dig normalt
+            self.speed_multiplier = 1  # Rör dig normalt
         elif state == 'die':
             self.speed_multiplier = 0  # Sluta röra på dig när du dör
 
@@ -181,13 +181,14 @@ class Enemy:
         if self.state != 'hit': # Se till att vi bara utlöser detta en gång per kollision
             self.update_animation_state('hit')
             self.state = 'attack' # Ändra tillstånd till attack för att stoppa 
+
     def start_burning(self):
         self.burning = True
         self.burn_start_time = pygame.time.get_ticks()
     
     def render_burning_text(self, surface):
         if self.burning:
-            burning_text = font.render("Burning!", True, (255, 69, 0))  # Orange color for visibility
+            burning_text = font.render("Burning!", True, (255, 69, 0)) 
             text_rect = burning_text.get_rect(center=(self.x + ENEMY_SIZE // 2, self.y - 20))
             surface.blit(burning_text, text_rect)
 
@@ -199,6 +200,8 @@ class Enemy:
             self.update_animation_state('go') # Återställ till go-tillstånd eller något annat önskat tillstånd
         if self.burning:
             if pygame.time.get_ticks() - self.burn_start_time >= 3000:
+                global score
+                score += 5
                 self.hit()
                 self.burning = False
 
@@ -347,7 +350,6 @@ class AmmoPickup:
             self.x = random.randint(0, WIDTH - PERK_SIZE)
             self.y = random.randint(0, HEIGHT - PERK_SIZE)
             self.active = True
-            # print(f"Respawning ammo at: {self.x}, {self.y}")  
 
 
             
