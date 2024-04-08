@@ -11,7 +11,8 @@ ENEMY_SIZE = 60
 PERK_SIZE = 45
 PLAYER_SPEED = 4
 ENEMY_SPEED = 1.5
-BULLET_SIZE = 5
+BULLET_SIZE = 7
+PARTICLE_COLOR = (255, 0, 0)
 
 # Färger
 WHITE = (255, 255, 255)
@@ -326,7 +327,7 @@ class Bullet:
     def draw(self, screen):
         # Rita kulspåret
         if len(self.trail) > 1:
-            pygame.draw.lines(screen, BLUE, False, self.trail, 2)
+            pygame.draw.lines(screen, BLUE, False, self.trail, 10)
         # Ritar skottet
         screen.blit(self.image, (self.x, self.y))
 
@@ -350,8 +351,30 @@ class AmmoPickup:
             self.x = random.randint(0, WIDTH - PERK_SIZE)
             self.y = random.randint(0, HEIGHT - PERK_SIZE)
             self.active = True
+            
+class Particle:
+    def __init__(self, x, y, color, ttl=200, size=50, velocity=(0, 0)):
+        self.x = x
+        self.y = y
+        self.size = size
+        self.color = color
+        self.ttl = ttl
+        self.velocity = velocity
 
+    def update(self):
+        self.x += self.velocity[0]
+        self.y += self.velocity[1]
+        self.ttl -= 1
+        self.size = max(1, self.size - 0.1)
 
+    def draw(self, surface):
+        pygame.draw.circle(surface, self.color, (int(self.x), int(self.y)), int(self.size))
+
+def create_particles(position, color=PARTICLE_COLOR, amount=10, speed=2):
+    for _ in range(amount):
+        angle = random.uniform(0, 2 * math.pi)
+        velocity = (math.cos(angle) * speed, math.sin(angle) * speed)
+        particles.append(Particle(position[0], position[1], color, ttl=20, size=5, velocity=velocity))
             
 background = pygame.image.load("dalle.jpg")
 
@@ -362,6 +385,7 @@ perk = FreezePerk()
 bullets = []
 ammo_pickup = AmmoPickup()
 fire_burn_perk = FireBurnPerk()
+particles = []
 
 # Variabel för att se senaste skottets avlossnings tid
 last_bullet_fired_time = 0
@@ -432,7 +456,12 @@ while running:
             if fire_burn_perk.pickup(player.x, player.y):  # Kontrollera om spelaren hämtar förmånen
                 for enemy in enemies:  # Tillämpa bränneffekten på alla fiender
                     enemy.start_burning()
-        
+        for particle in particles[:]:
+            particle.update()
+            if particle.ttl <= 0:
+                particles.remove(particle)
+            else:
+                particle.draw(screen)
         # Initiera bullets_to_remove innan din spelloop
         bullets_to_remove = []
         # Kollar för bullet-enemy kollision och döda fiender
@@ -441,20 +470,22 @@ while running:
             bullet.move()  # Flytta kulan
             bullet.draw(screen)  
             for enemy in enemies:
-                if enemy.head_hitbox.collidepoint((bullet.x, bullet.y)):
-                    enemy.head_hits_required-= 1
-                    bullets_to_remove.append(bullet)
-                    if enemy.head_hits_required <= 0:
-                        enemies.remove(enemy)
-                        score += 5
-                    break  #Viktigt att förhindra att denna kula kontrolleras mot andra fiender
-                elif enemy.body_hitbox.collidepoint((bullet.x, bullet.y)):
-                    enemy.body_hits_required -= 1
-                    bullets_to_remove.append(bullet)
-                    if enemy.body_hits_required <= 0:
-                        enemies.remove(enemy)
-                        score += 5
-                    break
+                if enemy.head_hitbox.collidepoint((bullet.x, bullet.y)) or enemy.body_hitbox.collidepoint((bullet.x, bullet.y)):
+                    create_particles((bullet.x, bullet.y), amount=20, speed=5)
+                    if enemy.head_hitbox.collidepoint((bullet.x, bullet.y)):
+                        enemy.head_hits_required-= 1
+                        bullets_to_remove.append(bullet)
+                        if enemy.head_hits_required <= 0:
+                            enemies.remove(enemy)
+                            score += 5
+                        break  #Viktigt att förhindra att denna kula kontrolleras mot andra fiender
+                    elif enemy.body_hitbox.collidepoint((bullet.x, bullet.y)):
+                        enemy.body_hits_required -= 1
+                        bullets_to_remove.append(bullet)
+                        if enemy.body_hits_required <= 0:
+                            enemies.remove(enemy)
+                            score += 5
+                        break
         # Efter att ha kontrollerat alla kulor, ta bort de som är markerade för borttagning
         bullets = [bullet for bullet in bullets if bullet not in bullets_to_remove]
 
