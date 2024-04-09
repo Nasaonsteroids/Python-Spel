@@ -331,7 +331,7 @@ class FireBurnPerk:
 
     def spawn(self):
         current_time = pygame.time.get_ticks()
-        if not self.active and (current_time - self.last_check_time >= 100000): # 100 sekunder i millisekunder
+        if not self.active and (current_time - self.last_check_time >= 100000 ): # 100 sekunder i millisekunder
             self.x = random.randint(0, WIDTH - PERK_SIZE)
             self.y = random.randint(0, HEIGHT - PERK_SIZE)
             self.active = True
