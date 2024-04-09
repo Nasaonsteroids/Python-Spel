@@ -27,10 +27,13 @@ clock = pygame.time.Clock()
 
 # Font rendering
 font = pygame.font.Font(None, 36)
-# Start Menu Funktion
+# Startmeny Funktion
 def start_menu():
+    # Definierar font och storlek för menyn
     menu_font = pygame.font.Font(None, 72)
+    # Skapar en rektangel för inmatningsrutan
     input_box = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 - 10, 200, 50)
+    # Definierar färger för aktiv och inaktiv inmatningsruta
     color_inactive = pygame.Color('lightskyblue3')
     color_active = pygame.Color('dodgerblue2')
     color = color_inactive
@@ -41,6 +44,7 @@ def start_menu():
     selected_option = 0
     menu_option_rects = []
 
+    # Skapar textobjekt för varje menyalternativ och dess position
     for i, option in enumerate(menu_options):
         option_text = menu_font.render(option, True, WHITE)
         option_rect = option_text.get_rect(center=(WIDTH // 2, 150 + i * 100))
@@ -56,7 +60,11 @@ def start_menu():
                     if active:
                         done = True
                     else:
-                        return menu_options[selected_option], text
+                        # Visar poängtavlan om SCORE väljs
+                        if menu_options[selected_option] == 'SCORE':
+                            display_scores(load_and_sort_scores())
+                        else:
+                            return menu_options[selected_option], text
                 elif event.key == pygame.K_UP:
                     selected_option = (selected_option - 1) % len(menu_options)
                 elif event.key == pygame.K_DOWN:
@@ -68,19 +76,19 @@ def start_menu():
                         text += event.unicode
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if input_box.collidepoint(event.pos):
-                    # Växla den aktiva variabeln.
                     active = not active
                 else:
                     active = False
                 color = color_active if active else color_inactive
-                # Om du klickar på ett menyalternativ, inte bara inmatningsrutan
                 if not active:
-                    mouse_pos = event.pos  # Får muspositionen
+                    mouse_pos = event.pos
                     for i, rect in enumerate(menu_option_rects):
                         if rect.collidepoint(mouse_pos):
                             selected_option = i
                             if menu_options[selected_option] == 'PLAY':
-                                done = True  # Anta att valet av spel också skickar in namnet
+                                done = True
+                            elif menu_options[selected_option] == 'SCORE':
+                                display_scores(load_and_sort_scores())
                             else:
                                 return menu_options[selected_option], text
 
@@ -98,18 +106,48 @@ def start_menu():
     
     return 'PLAY', text
 
-
-
-# Kallar till start_menu här (innan du går in i huvudspelslingan)
-choice, player_name = start_menu()
-if choice == 'EXIT':
-    pygame.quit()
-    quit()
-
+# Sparar poäng i en textfil med tidstämpel och spelarnamn
 def save_score(score, player_name):
     with open("scores.txt", "a") as file:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         file.write(f"{timestamp} - {player_name}: {score}\n")
+
+# Läser in och sorterar poäng från textfilen, returnerar topp 5
+def load_and_sort_scores():
+    try:
+        with open("scores.txt", "r") as file:
+            scores = file.readlines()
+        score_data = []
+        for line in scores:
+            parts = line.split(" - ")
+            if len(parts) == 2:
+                timestamp, player_score = parts
+                name, score = player_score.rsplit(": ", 1)
+                score_data.append((int(score.strip()), name))
+        sorted_scores = sorted(score_data, reverse=True)[:5]
+        return sorted_scores
+    except FileNotFoundError:
+        return []
+
+# Visar de topp 5 poängen på skärmen
+def display_scores(scores):
+    screen.fill((30, 30, 30))
+    for i, (score, name) in enumerate(scores):
+        score_text = f"{i+1}. {name} - {score}"
+        text_surface = font.render(score_text, True, WHITE)
+        screen.blit(text_surface, (WIDTH // 2 - 100, 150 + i * 50))
+    pygame.display.flip()
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                waiting = False
+
+# Startar huvudmenyn före huvudspelet
+choice, player_name = start_menu()
+if choice == 'EXIT':
+    pygame.quit()
+    quit()
 
 class Player:
     def __init__(self):
@@ -293,7 +331,7 @@ class FireBurnPerk:
 
     def spawn(self):
         current_time = pygame.time.get_ticks()
-        if not self.active and (current_time - self.last_check_time >= 100): # 100 sekunder i millisekunder
+        if not self.active and (current_time - self.last_check_time >= 100000): # 100 sekunder i millisekunder
             self.x = random.randint(0, WIDTH - PERK_SIZE)
             self.y = random.randint(0, HEIGHT - PERK_SIZE)
             self.active = True
@@ -313,22 +351,35 @@ class Bullet:
         self.x = x
         self.y = y
         self.direction = direction
-        self.trail = [(x, y)]
+        # Initialiserar kulan spåret med position och nuvarande tid
+        self.trail = [((x, y), pygame.time.get_ticks())]
+        self.trail_update_time = pygame.time.get_ticks()  # Aktuell tid
+        self.trail_delay = 100  # Millisekunder mellan uppdateringar av spåret
+        self.trail_lifetime = 150  # Livstid för varje spårsegment i millisekunder
+
     def move(self):
-        new_x = self.x + self.direction[0] * 10 # ändra hastiget på skotten
-        new_y = self.y + self.direction[1] * 10  # ändra hasigheten på skotten
-         # Lägg till aktuell position till leden
-        self.trail.append((new_x, new_y))
-        # Håll leden en viss längd
-        if len(self.trail) > 5:
-            self.trail.pop(0)
+        new_x = self.x + self.direction[0] * 10
+        new_y = self.y + self.direction[1] * 10
+
+        current_time = pygame.time.get_ticks()
+        # Kontrollera om det är dags att uppdatera spåret
+        if current_time - self.trail_update_time > self.trail_delay:
+            # Lägg till ny position med nuvarande tid
+            self.trail.append(((new_x, new_y), current_time))
+            self.trail_update_time = current_time
+
+        # Ta bort gamla segment baserat på deras livstid
+        self.trail = [(pos, time) for pos, time in self.trail if current_time - time < self.trail_lifetime]
+
         self.x = new_x
         self.y = new_y
+
     def draw(self, screen):
-        # Rita kulspåret
-        if len(self.trail) > 1:
-            pygame.draw.lines(screen, BLUE, False, self.trail, 10)
-        # Ritar skottet
+        # Rita kulans spår
+        trail_positions = [pos for pos, _ in self.trail]
+        if len(trail_positions) > 1:
+            pygame.draw.lines(screen, BLUE, False, trail_positions, 5)
+        # Rita kulan
         screen.blit(self.image, (self.x, self.y))
 
 class AmmoPickup:
@@ -353,7 +404,7 @@ class AmmoPickup:
             self.active = True
             
 class Particle:
-    def __init__(self, x, y, color, ttl=200, size=50, velocity=(0, 0)):
+    def __init__(self, x, y, color, ttl=40, size=10, velocity=(0, 0)):
         self.x = x
         self.y = y
         self.size = size
@@ -488,7 +539,11 @@ while running:
                         break
         # Efter att ha kontrollerat alla kulor, ta bort de som är markerade för borttagning
         bullets = [bullet for bullet in bullets if bullet not in bullets_to_remove]
-
+       
+        for particle in particles:
+            particle.update()
+            if particle.ttl <= 0:
+                particles.remove(particle)
 
         if len(enemies) == 0:  # Alla fiender är döda
             # Spawna nya fiender
@@ -511,14 +566,15 @@ while running:
     # Ritar  bakgrunden, spelaren, fienden, power-ups och skott
     screen.blit(background, (0, 0))
     screen.blit(player.image, (player.x, player.y))
-
+    for particle in particles:
+        particle.draw(screen) 
     for enemy in enemies:
         enemy.animate()
         enemy.move_towards_player(player.x, player.y)
         screen.blit(enemy.image, (enemy.x, enemy.y))
         enemy.render_burning_text(screen)
-        pygame.draw.rect(screen, (255, 0, 0), enemy.head_hitbox, 2)  # Hitbox check head 
-        pygame.draw.rect(screen, (0, 255, 0), enemy.body_hitbox, 2)  # Hitbox check body
+    for bullet in bullets:
+        bullet.draw(screen)
 
     if perk.active:
         screen.blit(perk.image, (perk.x, perk.y))

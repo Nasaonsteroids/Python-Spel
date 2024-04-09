@@ -1,7 +1,4 @@
-fix bullet visuals
 Maybe add diff type of zombies
-
-
 
 -------
 fixed
@@ -12,3 +9,4 @@ Start menu
 score saving
 name putting
 fix fire damage points
+fix bullet visuals
