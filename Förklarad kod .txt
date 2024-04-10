@@ -1,0 +1,31 @@
+Importera bibliotek: Importerar nödvändiga Python-bibliotek för spelet, inklusive Pygame för att hantera grafik och användarinmatning, random för slumpmässiga operationer, datetime för att hantera tidsåtgång, och math för matematiska beräkningar.
+
+Variabler och konstanter: Definierar olika variabler och konstanter som används i spelet, inklusive skärmstorlek, storlek och hastighet för spelaren, fienden och perk, färger, och mer.
+
+Startmenyfunktion: Visar startmenyn för spelaren och hanterar användarinmatning för att välja alternativ som att spela, visa poäng eller avsluta spelet.
+
+Spara poängfunktion: Sparar spelarens poäng tillsammans med deras namn och tidstämpel i en textfil.
+
+Läs och sortera poängfunktion: Läser in tidigare sparade poäng från en textfil, sorterar dem och returnerar de fem högsta poängen.
+
+Visa poängfunktion: Visar de fem högsta poängen på skärmen när spelaren väljer att visa poängtavlan.
+
+Spelarklass: Definierar spelarens egenskaper och rörelsemönster.
+
+Fiendeklass: Definierar fiendens egenskaper och beteende, inklusive animationer och rörelsemönster.
+
+Perk-klasser (FreezePerk och FireBurnPerk): Hanterar power-ups i spelet, inklusive spawn, insamling och effekter.
+
+Kul-klass: Representerar spelarens skott och hanterar dess rörelse och kollision med fiender.
+
+AmmoPickup-klass: Representerar ammo power-ups och hanterar dess spawn och insamling av spelaren.
+
+Partikelklass: Används för att skapa och hantera partikeleffekter i spelet.
+
+Skapa partikelfunktion: Skapar partikeleffekter vid en given position med en given färg, mängd och hastighet.
+
+Huvudspelloopen: Här ligger spelets huvudloop som kontinuerligt uppdaterar och renderar spelvärlden, hanterar användarinmatning och kollisioner, samt styr spelets logik och flöde.
+
+Game Over-skärmfunktion: Visar en Game Over-skärm när spelaren förlorar och visar hur länge de överlevde.
+
+Replay eller Exit-skärmfunktion: Visar alternativ för spelaren att välja att spela om eller avsluta spelet efter att ha förlorat.
