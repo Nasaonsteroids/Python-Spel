@@ -175,10 +175,10 @@ class Enemy:
     def __init__(self):
         self.is_active = False  #Ställ in på True när fienden dyker upp och blir aktiv.
         self.sprites = {
-            'go': [pygame.transform.scale(pygame.image.load(f"go_{i}.png"), (ENEMY_SIZE, ENEMY_SIZE)) for i in range(1, 4)],
-            'hit': [pygame.transform.scale(pygame.image.load(f"hit_{i}.png"), (ENEMY_SIZE, ENEMY_SIZE)) for i in range(1, 3)],
-            'die': [pygame.transform.scale(pygame.image.load(f"die_{i}.png"), (ENEMY_SIZE, ENEMY_SIZE)) for i in range(1, 4)],
-            'appear': [pygame.transform.scale(pygame.image.load(f"appear_{i}.png"), (ENEMY_SIZE, ENEMY_SIZE)) for i in range(1, 3)]
+            'go': [pygame.transform.scale(pygame.image.load(f"go_{i}.png"), (ENEMY_SIZE, ENEMY_SIZE)) for i in range(1, 10)],
+            'hit': [pygame.transform.scale(pygame.image.load(f"hit_{i}.png"), (ENEMY_SIZE, ENEMY_SIZE)) for i in range(1, 7)],
+            'die': [pygame.transform.scale(pygame.image.load(f"die_{i}.png"), (ENEMY_SIZE, ENEMY_SIZE)) for i in range(1, 8)],
+            'appear': [pygame.transform.scale(pygame.image.load(f"appear_{i}.png"), (ENEMY_SIZE, ENEMY_SIZE)) for i in range(1, 11)]
         }
         self.current_sprites = self.sprites['appear']
         self.current_sprite_index = 0
